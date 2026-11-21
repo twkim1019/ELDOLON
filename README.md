@@ -17,7 +17,10 @@ real-time musical-intelligence engine (chords, scales, voices, rhythm, statistic
 | Linux build of the same sources (GCC 13, JUCE 8.0.4) | **built** — the VST3 compiles and links |
 | Core tests (MIDI engine, intelligence, mapping, capture/SMF, Visual DNA) | **54 / 54 passed** — `TEST_REPORT.md` |
 | VST3 host test (JUCE VST3 hosting, MIDI through processBlock, state, programs, editor, stress, shutdown) | **18 / 18 passed** on Linux under Xvfb (CPU renderer) |
-| Windows x64 build (MSVC 2022) + pluginval + `setup.exe` | produced by GitHub Actions (`.github/workflows/build-windows.yml`) on every push to `main`; the result is published to the `binaries` branch and as workflow artifacts. Check the Actions tab for the run status. |
+| Windows x64 build (MSVC 2022, OpenGL on) | **built** by GitHub Actions (`.github/workflows/build-windows.yml`, run 44872987068) |
+| Core tests on Windows (MSVC build) | **54 / 54 passed** |
+| pluginval (Tracktion, strictness 5, non-GUI tests) | **SUCCESS** (exit code 0) |
+| `EIDOLON-1.0.0-Setup.exe` (Inno Setup 6) | **built** — contains the x64 `EIDOLON.vst3`; published to the `binaries` branch on every push to `main` |
 | OpenGL (GPU) canvas | Windows build only (the Linux validation machine has no GL headers); automatic fallback to CPU |
 | Inside FL Studio | **not tested by this pipeline** (no FL Studio available). Routing follows FL's documented behaviour — see `Docs/FL_STUDIO_ROUTING.md`. |
 

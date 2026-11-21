@@ -7,8 +7,9 @@ passed was assumed.
 * Linux x86_64 (2 cores), GCC 13.3, CMake 3.28, Ninja, JUCE 8.0.4
 * The plugin was built as a **Linux VST3 from the same sources** as the Windows target
 * GUI tests under Xvfb (virtual X display, **software renderer**, no GPU, no window manager)
-* Not covered here: the MSVC/Windows build, pluginval and `setup.exe` (produced by the GitHub Actions workflow),
-  the OpenGL path (Windows only), and FL Studio itself (not available in this environment)
+* Windows results come from GitHub Actions (section 4)
+* Not covered: FL Studio itself (not available in either environment) and an interactive check of the OpenGL path
+  on real GPU hardware
 
 ## 1. Core test suite — `Tests/CoreTests.cpp`
 MIDI engine, musical intelligence, mapping, capture / Standard MIDI File export, Visual DNA, performance.
@@ -72,7 +73,7 @@ MIDI engine, musical intelligence, mapping, capture / Standard MIDI File export,
 
 **54 passed, 0 failed**
 
-## 2. VST3 host validation — `Tests/HostTest.cpp`
+## 2. VST3 host validation (Linux) — `Tests/HostTest.cpp`
 The built `EIDOLON.vst3` is scanned and loaded through JUCE's `VST3PluginFormat` (the hosting path a DAW uses).
 MIDI is sent through `processBlock` (also from a separate audio thread while the editor runs); state is read back
 from the host-side VST3 state container.
@@ -106,7 +107,15 @@ Notes:
 * Software rendering under Xvfb is slow (adaptive quality drops to its floor); the Windows build renders through
   OpenGL.
 
-## 3. Screenshots (`Docs/screenshots/`)
+## 3. Windows x64 — GitHub Actions run 44872987068 (windows-2022, MSVC 2022)
+| Step | Result |
+|---|---|
+| Configure + Release build (`EIDOLON_ENABLE_OPENGL=ON`, static runtime) | success (12 compiler warnings, 0 errors) |
+| Core tests (`eidolon_core_tests.exe`) | 54 / 54 passed |
+| pluginval, strictness 5, `--skip-gui-tests` (plugin info, programs, audio processing, state, automation, automatable parameters, buses, VST3 validator) | SUCCESS, exit code 0 |
+| Inno Setup 6 → `EIDOLON-1.0.0-Setup.exe` (4.7 MB, contains `Contents\x86_64-win\EIDOLON.vst3`) | success, pushed to the `binaries` branch |
+
+## 4. Screenshots (`Docs/screenshots/`)
 Taken from the running plugin editor under Xvfb (CPU renderer) while MIDI was being played:
 
 * `eidolon_no_midi.png`
