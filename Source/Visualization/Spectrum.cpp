@@ -3,6 +3,7 @@
 #include "VisualWorld.h"
 #include "../Intelligence/ChordDetector.h"
 #include "../UI/Theme.h"
+#include <limits>
 
 namespace eidolon
 {

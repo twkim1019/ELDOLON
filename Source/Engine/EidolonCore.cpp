@@ -81,6 +81,7 @@ void EidolonCore::loadFactoryProgram (int index)
     program = index;
     loadDNA (fp[(size_t) index], true);
     presets.markRecent (juce::String (fp[(size_t) index].name));
+    rebuildPersisted();
 }
 
 void EidolonCore::panic()
@@ -285,7 +286,7 @@ void EidolonCore::tick()
         const int hz = juce::jlimit (15, 120, base.geti (P::RenderFps));
         if (hz != timerHz) { timerHz = hz; startTimerHz (hz); }
     }
-    if (dirty && ui - lastPersist > 0.4) rebuildPersisted();
+    if (dirty && ui - lastPersist > 0.1) rebuildPersisted();
 }
 
 // ------------------------------------------------------------------------------------------------- persistence

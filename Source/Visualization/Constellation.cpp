@@ -54,10 +54,11 @@ void ConstellationLayer::update (const FrameContext& f)
         nd.c = juce::Colour (n.colour);
         nodes.push_back (nd);
     }
-    if (nodes.size() > 160)
+    const size_t maxNodes = (size_t) (40.0f + 120.0f * f.detailScale);
+    if (nodes.size() > maxNodes)
     {
         std::sort (nodes.begin(), nodes.end(), [] (const Node& x, const Node& y) { return x.n->onTime > y.n->onTime; });
-        nodes.resize (160);
+        nodes.resize (maxNodes);
     }
 
     // chord progression ghosts
@@ -229,8 +230,20 @@ void ConstellationLayer::render (RenderContext& rc, const FrameContext& f)
     const bool oct = f.p.getb (P::ConOctave), custom = f.p.getb (P::ConCustom), seq = f.p.getb (P::ConSequential), voice = f.p.getb (P::ConVoice);
     const int customIv = f.p.geti (P::ConCustomIv);
 
+    // link budget (total per frame and per node) keeps dense passages readable and cheap
+    int budget = (int) (120.0f + 700.0f * rc.detail);
+    std::vector<int> degree (nodes.size(), 0);
+    const int maxDegree = 4 + (int) (6.0f * rc.detail);
     auto link = [&] (const Node& x, const Node& y, float weight)
     {
+        if (budget <= 0) return;
+        const size_t ix = (size_t) (&x - nodes.data()), iy = (size_t) (&y - nodes.data());
+        if (ix < degree.size() && iy < degree.size())
+        {
+            if (degree[ix] >= maxDegree || degree[iy] >= maxDegree) return;
+            ++degree[ix]; ++degree[iy];
+        }
+        --budget;
         const Vec3 d = y.p - x.p;
         const float len = d.length();
         if (len > maxDist || weight <= 0.0f) return;

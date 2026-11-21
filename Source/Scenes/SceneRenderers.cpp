@@ -124,14 +124,14 @@ void aurora (const Ctx& c)
     for (int k = 0; k < 5; ++k)
     {
         if (! c.keep (k)) continue;
-        const float z = -12.0f - (float) k * 6.0f;
+        const float z = -26.0f - (float) k * 7.0f;
         const auto col = c.pal.at (0.08f + (float) k * 0.13f + c.in.time * 0.004f);
         juce::Path curtain, edge;
         std::vector<juce::Point<float>> tops, bots;
         float minY = 1e9f, maxY = -1e9f;
         for (float x = -34.0f; x <= 34.0f; x += step)
         {
-            const float yt = 5.0f + 3.0f * noise1 (x * 0.07f + c.in.time * 0.12f + (float) k * 10.0f) + c.in.contour * 1.5f + c.in.energy * 2.0f;
+            const float yt = 8.0f + 3.0f * noise1 (x * 0.07f + c.in.time * 0.12f + (float) k * 10.0f) + c.in.contour * 1.5f + c.in.energy * 2.0f;
             const float yb = yt - (5.0f + 3.0f * noise1 (x * 0.05f - c.in.time * 0.09f + (float) k * 4.0f));
             const float wave = std::sin (x * 0.12f + c.in.time * 0.3f + (float) k) * 1.5f;
             const auto pt = c.rc.project (c.tr ({ x, yt, z + wave })), pb = c.rc.project (c.tr ({ x, yb, z + wave }));
@@ -144,7 +144,7 @@ void aurora (const Ctx& c)
         for (auto& p : tops) curtain.lineTo (p);
         for (size_t i = bots.size(); i-- > 0;) curtain.lineTo (bots[i]);
         curtain.closeSubPath();
-        const float a = (0.16f + 0.2f * c.in.energy) * c.k() * c.rc.alpha;
+        const float a = (0.09f + 0.13f * c.in.energy) * c.k() * c.rc.alpha;
         juce::ColourGradient grad (col.withAlpha (0.0f), 0, minY, col.withAlpha (0.0f), 0, maxY, false);
         grad.addColour (0.55, col.withAlpha (juce::jlimit (0.0f, 1.0f, a)));
         grad.addColour (0.85, col.brighter (0.4f).withAlpha (juce::jlimit (0.0f, 1.0f, a * 1.3f)));

@@ -6,6 +6,7 @@
 #include "../Rendering/Geometry.h"
 #include "../UI/Theme.h"
 #include <algorithm>
+#include <functional>
 
 namespace eidolon
 {
@@ -180,6 +181,24 @@ void PianoUniverseLayer::render (RenderContext& rc, const FrameContext& f)
     // ---------------------------------------------------------- notes, far to near
     order.clear();
     for (auto& n : f.world.notes) if (n.alive) order.push_back (&n);
+    // draw budget: under heavy MIDI load keep the newest notes (quality preset x adaptive quality)
+    const size_t budget = (size_t) std::max (48.0f, 1024.0f * f.detailScale * f.detailScale);
+    if (order.size() > budget)
+    {
+        std::nth_element (order.begin(), order.begin() + (std::ptrdiff_t) budget, order.end(),
+                          [] (const VisualNote* a, const VisualNote* b) { return a->onTime > b->onTime; });
+        order.resize (budget);
+    }
+    double trailCutoff = -1e300;
+    const size_t trailBudget = (size_t) (40.0f + 260.0f * f.trailScale);
+    if (order.size() > trailBudget)
+    {
+        std::vector<double> times;
+        times.reserve (order.size());
+        for (auto* n : order) times.push_back (n->onTime);
+        std::nth_element (times.begin(), times.begin() + (std::ptrdiff_t) trailBudget, times.end(), std::greater<double>());
+        trailCutoff = times[trailBudget];
+    }
     std::sort (order.begin(), order.end(), [&] (const VisualNote* a, const VisualNote* b)
     {
         return dot (a->pos - rc.cam.eye(), rc.cam.forward()) > dot (b->pos - rc.cam.eye(), rc.cam.forward());
@@ -234,7 +253,7 @@ void PianoUniverseLayer::render (RenderContext& rc, const FrameContext& f)
         n->drawScale = size;
 
         // ------------------------------------------------ trail / body (melodic trajectory, bend history)
-        if ((trailOn || mapDur == 0 || geometry == 6) && n->trailCount >= 1)
+        if ((trailOn || mapDur == 0 || geometry == 6) && n->trailCount >= 1 && n->onTime > trailCutoff)
         {
             const int count = std::min (n->trailCount, trailOn ? trailLen : (int) n->trail.size());
             pts.clear(); widths.clear();

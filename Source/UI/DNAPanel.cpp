@@ -123,6 +123,7 @@ DNAPanel::DNAPanel (EidolonCore& c) : core (c)
     addAndMakeVisible (viewport);
     nameEditor.setText (core.currentPresetName(), false);
     rebuildFilter();
+    refresh();
 }
 
 const PresetEntry* DNAPanel::selectedEntry() const
@@ -166,6 +167,8 @@ void DNAPanel::setStatus (const juce::String& s)
 void DNAPanel::refresh()
 {
     if (! nameEditor.hasKeyboardFocus (true)) nameEditor.setText (core.currentPresetName(), false);
+    const int ci = juce::StringArray (kPresetCategories, kNumPresetCategories).indexOf (juce::String (core.dnaMeta().category));
+    categoryBox.setSelectedId (ci >= 2 ? ci + 1 : kNumPresetCategories, juce::dontSendNotification);
     for (auto& r : mutationRows)
     {
         if (auto* s = dynamic_cast<LambdaSlider*> (r.get())) s->refresh();

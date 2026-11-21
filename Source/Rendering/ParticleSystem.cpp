@@ -54,11 +54,11 @@ void ParticleSystem::render (RenderContext& rc, float alphaMul, float sizeMul) c
         const float a = juce::jlimit (0.0f, 1.0f, std::min (1.0f, fade * 1.2f)) * alphaMul;
         const float r = q.size * sizeMul * pr.scale;
         const juce::Colour c (q.argb);
-        if (r < 1.4f) rc.point (pr.x, pr.y, std::max (0.6f, r), c, a);
+        if (r < 1.4f || (live > 2500 && r < 3.0f)) rc.point (pr.x, pr.y, std::max (0.6f, std::min (r, 2.0f)), c, a);
         else
         {
-            rc.glow (pr.x, pr.y, std::min (r * 2.6f, 80.0f), c, a * 0.55f);
-            rc.point (pr.x, pr.y, std::min (r * 0.45f, 6.0f), c.brighter (0.5f), a * 0.9f);
+            rc.glow (pr.x, pr.y, std::min (r * 2.4f, 24.0f), c, a * 0.55f);
+            if (r > 2.5f) rc.point (pr.x, pr.y, std::min (r * 0.45f, 4.0f), c.brighter (0.5f), a * 0.9f);
         }
     }
 }

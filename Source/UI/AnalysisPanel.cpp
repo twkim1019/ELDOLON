@@ -40,7 +40,7 @@ void AnalysisReadout::paint (juce::Graphics& g)
     row ("Active notes", names.isEmpty() ? juce::String ("-") : names.joinIntoString (" "));
     row ("Count / polyphony", juce::String (a.activeNotes) + " sounding, " + juce::String (a.keysDown) + " keys, peak " + juce::String (a.peakPolyphony));
     row ("Highest / lowest", noteName (a.highest) + " / " + noteName (a.lowest));
-    row ("Average velocity", juce::String (a.averageVelocity, 1) + "  (recent " + juce::String (a.recentVelocity, 0) + ")");
+    row ("Average velocity", juce::String (a.averageVelocity, 1) + "  (recent " + juce::String ((int) std::lround (a.recentVelocity)) + ")");
     row ("Note density", juce::String (a.noteDensity, 2) + " notes/s");
     row ("Rhythmic density", juce::String (a.rhythm.onsetRate, 2) + " onsets/s (" + juce::String ((int) (a.rhythm.density * 100)) + "%)");
     row ("Tempo / beat", a.rhythm.source == BeatSource::None ? juce::String ("-")

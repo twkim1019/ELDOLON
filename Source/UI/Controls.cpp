@@ -14,7 +14,7 @@ juce::String formatParamValue (const ParamInfo& info, float v)
     const float range = info.maxV - info.minV;
     const juce::String key (info.key);
     if (key.endsWith ("yaw") || key.endsWith ("pitch") || key.endsWith ("rotation") || key.endsWith ("lightAngle") || key.endsWith ("fov"))
-        return juce::String (v, 0) + juce::String (juce::CharPointer_UTF8 ("\xc2\xb0"));
+        return juce::String ((int) std::lround (v)) + juce::String (juce::CharPointer_UTF8 ("\xc2\xb0"));
     if (key.contains ("(s)") || juce::String (info.label).contains ("(s)") || key.endsWith ("release") || key.endsWith ("transitionTime")
         || key.endsWith ("history") || key.endsWith ("life") || key.endsWith ("duration") || key.endsWith ("decay") || key.endsWith ("Window"))
         return juce::String (v, v < 10 ? 2 : 1) + " s";

@@ -129,6 +129,8 @@ const juce::String EidolonProcessor::getProgramName (int index)
 
 void EidolonProcessor::getStateInformation (juce::MemoryBlock& dest)
 {
+    if (juce::MessageManager::getInstanceWithoutCreating() != nullptr && juce::MessageManager::getInstance()->isThisTheMessageThread())
+        engine->flushStateIfDirty();
     juce::ValueTree root ("EIDOLON");
     root.setProperty ("stateVersion", 1, nullptr);
     root.setProperty ("engine", engine->getStateJson(), nullptr);

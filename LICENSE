@@ -1,0 +1,12 @@
+EIDOLON — MIDI Universe Visualizer
+Copyright (c) 2026 the EIDOLON project owner. All rights reserved unless the owner publishes a different license.
+
+Third-party components
+----------------------
+* JUCE 8.0.4 (https://juce.com) — dual licensed: GNU AGPLv3 or the commercial JUCE licence.
+  Distributing EIDOLON binaries requires compliance with one of these (e.g. releasing EIDOLON's source under the
+  AGPLv3, or holding a JUCE licence that covers the distribution).
+* Steinberg VST3 SDK (bundled with JUCE) — GPLv3 or the Steinberg VST3 licence agreement.
+* Inter typeface (Resources/Fonts/Inter*.otf) — SIL Open Font License 1.1, see Resources/Fonts/licenses/Inter-OFL.txt.
+* DejaVu Sans Mono (Resources/Fonts/DejaVuSansMono.ttf) — Bitstream Vera / DejaVu license,
+  see Resources/Fonts/licenses/DejaVu-LICENSE.txt.

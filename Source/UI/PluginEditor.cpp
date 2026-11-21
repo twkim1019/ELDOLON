@@ -126,6 +126,7 @@ EidolonEditor::EidolonEditor (EidolonProcessor& p) : AudioProcessorEditor (p), p
     }
     for (auto& panel : panels) addChildComponent (*panel);
 
+    const int initialW = core.ui.width, initialH = core.ui.height;   // setResizeLimits may resize (and store) first
     setResizable (true, true);
     setResizeLimits (900, 560, 3840, 2400);
     setWantsKeyboardFocus (true);
@@ -133,7 +134,7 @@ EidolonEditor::EidolonEditor (EidolonProcessor& p) : AudioProcessorEditor (p), p
     panelButton.setToggleState (core.ui.panelVisible, juce::dontSendNotification);
     focusButton.setToggleState (core.ui.focusMode, juce::dontSendNotification);
     selectTab (currentTab);
-    setSize (core.ui.width, core.ui.height);
+    setSize (juce::jmax (900, initialW), juce::jmax (560, initialH));
 
     core.onFrame = [this]
     {
@@ -294,7 +295,7 @@ void EidolonEditor::paint (juce::Graphics& g)
         const auto& s = core.visuals().stats();
         g.setColour (colours::text3);
         g.setFont (Fonts::get().mono (10.5f));
-        g.drawText (canvas.rendererName() + "  " + juce::String (s.fps, 0) + " fps", rendererArea, juce::Justification::centredRight, true);
+        g.drawText (canvas.rendererName() + "  " + juce::String ((int) std::lround (s.fps)) + " fps", rendererArea, juce::Justification::centredRight, true);
     }
 
     // ---- side panel

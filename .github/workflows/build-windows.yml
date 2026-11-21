@@ -1,0 +1,87 @@
+name: Build EIDOLON (Windows x64 VST3 + setup.exe)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'Docs/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write   # lets the job publish setup.exe to the 'binaries' branch
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure (VS 2022, x64, OpenGL canvas on)
+        run: cmake -S . -B build-win -G "Visual Studio 17 2022" -A x64 -DEIDOLON_BUILD_TESTS=ON -DEIDOLON_ENABLE_OPENGL=ON
+
+      - name: Build Release
+        run: cmake --build build-win --config Release --target Eidolon_VST3 eidolon_core_tests --parallel
+
+      - name: Core tests (MIDI engine, intelligence, mapping, capture, DNA)
+        run: build-win\Release\eidolon_core_tests.exe build-win\core_test_results.md
+        shell: cmd
+
+      - name: Validate VST3 with pluginval (strictness 5)
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pluginval.zip
+          Expand-Archive pluginval.zip -DestinationPath pluginval
+          New-Item -ItemType Directory -Force pluginval-logs | Out-Null
+          # pluginval.exe is a GUI-subsystem app: wait for it explicitly
+          $p = Start-Process -FilePath ".\pluginval\pluginval.exe" -NoNewWindow -Wait -PassThru -ArgumentList `
+                 '--strictness-level','5','--skip-gui-tests','--output-dir','pluginval-logs','--validate','build-win\Eidolon_artefacts\Release\VST3\EIDOLON.vst3'
+          Write-Host "pluginval exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { exit 1 }
+
+      - name: Upload pluginval logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pluginval-logs
+          path: pluginval-logs
+          if-no-files-found: ignore
+
+      - name: Build installer (setup.exe, Inno Setup 6)
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc installer\EIDOLON.iss "/DPluginDir=$PWD\build-win\Eidolon_artefacts\Release\VST3\EIDOLON.vst3"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Publish setup.exe to the 'binaries' branch
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          New-Item -ItemType Directory -Force publish | Out-Null
+          Copy-Item dist\EIDOLON-1.0.0-Setup.exe publish\
+          Copy-Item build-win\core_test_results.md publish\
+          Set-Location publish
+          git init -q -b binaries
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add EIDOLON-1.0.0-Setup.exe core_test_results.md
+          git commit -q -m "EIDOLON setup.exe built from $env:GITHUB_SHA"
+          git push -f "https://x-access-token:$env:GH_TOKEN@github.com/$env:GITHUB_REPOSITORY.git" binaries
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: EIDOLON-Setup-Windows-x64
+          path: dist/EIDOLON-1.0.0-Setup.exe
+
+      - name: Upload plugin bundle and test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: EIDOLON-VST3-Windows-x64
+          path: |
+            build-win/Eidolon_artefacts/Release/VST3/EIDOLON.vst3
+            build-win/core_test_results.md
+            pluginval-logs

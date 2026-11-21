@@ -37,6 +37,7 @@ void VisualWorld::recount()
 VisualizationEngine::VisualizationEngine()
 {
     glowImage = RenderContext::createGlowImage (64);
+    glowSprites = RenderContext::createGlowSprites();
     for (int s = 0; s < (int) Shape::Count; ++s) for (int d = 3; d <= 12; ++d) meshFor ((Shape) s, d);   // warm the cache
     noChanges.reserve (1);
 }
@@ -65,7 +66,8 @@ void VisualizationEngine::reportFrameTime (float ms)
     st.renderMs = st.renderMs * 0.9f + ms * 0.1f;
     const float budget = 1000.0f / std::max (15.0f, params.get (P::RenderFps));
     const float total = st.renderMs + st.updateMs;
-    if (total > budget * 0.95f) adaptive = std::max (0.35f, adaptive - 0.02f);
+    if (total > budget * 1.5f) adaptive = std::max (0.15f, adaptive - 0.05f);
+    else if (total > budget * 0.95f) adaptive = std::max (0.15f, adaptive - 0.02f);
     else if (total < budget * 0.6f) adaptive = std::min (1.0f, adaptive + 0.005f);
 }
 
@@ -199,6 +201,26 @@ void VisualizationEngine::update (double nowIn, float dt, const ParamSet& p, con
 
 void VisualizationEngine::drawBackground (juce::Graphics& g, juce::Rectangle<float> area)
 {
+    if (! gpuFrame)
+    {
+        // CPU path: the full-screen gradients only change slowly, so cache them
+        const int bucketA = (int) (activity * 20.0f), bucketT = (int) ((std::sin (animTime * 0.05f) + 1.0f) * 25.0f);
+        const juce::String key = juce::String ((int) area.getWidth()) + "x" + juce::String ((int) area.getHeight()) + ":" + juce::String::toHexString ((int) palette.bgTop.getARGB())
+                               + juce::String::toHexString ((int) palette.bgBottom.getARGB()) + ":" + juce::String (bucketA) + ":" + juce::String (bucketT)
+                               + ":" + juce::String::toHexString ((int) palette.at (0.15f).getARGB());
+        if (key != bgKey || ! bgCache.isValid())
+        {
+            bgCache = juce::Image (juce::Image::RGB, std::max (1, (int) area.getWidth()), std::max (1, (int) area.getHeight()), false);
+            juce::Graphics bg (bgCache);
+            const bool was = gpuFrame;
+            gpuFrame = true;   // paint the real gradients into the cache
+            drawBackground (bg, bgCache.getBounds().toFloat());
+            gpuFrame = was;
+            bgKey = key;
+        }
+        g.drawImageAt (bgCache, (int) area.getX(), (int) area.getY());
+        return;
+    }
     juce::ColourGradient grad (palette.bgTop, area.getCentreX(), area.getY(), palette.bgBottom, area.getCentreX(), area.getBottom(), false);
     g.setGradientFill (grad);
     g.fillRect (area);
@@ -215,11 +237,27 @@ void VisualizationEngine::drawPost (juce::Graphics& g, juce::Rectangle<float> ar
     const float vig = params.get (P::LookVignette);
     if (vig > 0.01f)
     {
-        juce::ColourGradient v (juce::Colours::transparentBlack, area.getCentreX(), area.getCentreY(),
-                                juce::Colours::black.withAlpha (0.75f * vig), area.getX(), area.getY(), true);
-        v.addColour (0.55, juce::Colours::transparentBlack);
-        g.setGradientFill (v);
-        g.fillRect (area);
+        auto paintVignette = [&] (juce::Graphics& vg, juce::Rectangle<float> r)
+        {
+            juce::ColourGradient v (juce::Colours::transparentBlack, r.getCentreX(), r.getCentreY(),
+                                    juce::Colours::black.withAlpha (0.75f * vig), r.getX(), r.getY(), true);
+            v.addColour (0.55, juce::Colours::transparentBlack);
+            vg.setGradientFill (v);
+            vg.fillRect (r);
+        };
+        if (gpuFrame) paintVignette (g, area);
+        else
+        {
+            const juce::String key = juce::String ((int) area.getWidth()) + "x" + juce::String ((int) area.getHeight()) + ":" + juce::String (vig, 2);
+            if (key != vignetteKey || ! vignetteCache.isValid())
+            {
+                vignetteCache = juce::Image (juce::Image::ARGB, std::max (1, (int) area.getWidth()), std::max (1, (int) area.getHeight()), true);
+                juce::Graphics vg (vignetteCache);
+                paintVignette (vg, vignetteCache.getBounds().toFloat());
+                vignetteKey = key;
+            }
+            g.drawImageAt (vignetteCache, (int) area.getX(), (int) area.getY());
+        }
     }
     const float tex = params.get (P::LookTexture);
     if (tex > 0.01f)
@@ -239,9 +277,10 @@ void VisualizationEngine::drawPost (juce::Graphics& g, juce::Rectangle<float> ar
     }
 }
 
-void VisualizationEngine::render (juce::Graphics& g, juce::Rectangle<float> area)
+void VisualizationEngine::render (juce::Graphics& g, juce::Rectangle<float> area, bool gpu)
 {
     const double t0 = juce::Time::getMillisecondCounterHiRes();
+    gpuFrame = gpu;
     cam.setViewport (area);
     drawBackground (g, area);
     if (lastA == nullptr || lastT == nullptr || lastS == nullptr) { ++frames; return; }
@@ -253,14 +292,14 @@ void VisualizationEngine::render (juce::Graphics& g, juce::Rectangle<float> area
     f.layerOpacity = opacity; f.layerScale = scale;
     f.chordRoot = lastA->chord.valid ? lastA->chord.root : -1;
 
-    RenderContext rc (g, cam, glowImage);
+    RenderContext rc (g, cam, glowImage, &glowSprites);
     rc.bloom = params.get (P::LookBloom);
     rc.detail = detailScale;
     rc.brightness = params.get (P::LookBrightness);
     rc.texture = params.get (P::LookTexture);
     const float la = params.get (P::LookLightAngle) * kPi / 180.0f;
     rc.lightDir = Vec3 { std::cos (la) * 0.7f, 0.65f, std::sin (la) * 0.7f }.normalised();
-    g.setImageResamplingQuality (params.getb (P::RenderAA) ? juce::Graphics::highResamplingQuality : juce::Graphics::lowResamplingQuality);
+    g.setImageResamplingQuality (params.getb (P::RenderAA) ? juce::Graphics::mediumResamplingQuality : juce::Graphics::lowResamplingQuality);
 
     auto layer = [&] (int i, VisualLayer& L)
     {
@@ -269,7 +308,30 @@ void VisualizationEngine::render (juce::Graphics& g, juce::Rectangle<float> area
         L.render (rc, f);
     };
 
-    if (opacity[6] > 0.003f) { rc.alpha = opacity[6]; sceneMgr.render (rc, f); }
+    if (opacity[6] > 0.003f)
+    {
+        if (gpu) { rc.alpha = opacity[6]; sceneMgr.render (rc, f); }
+        else
+        {
+            // CPU path: the soft procedural environment is rendered at half resolution and upscaled
+            const int w = std::max (1, (int) area.getWidth() / 2), h = std::max (1, (int) area.getHeight() / 2);
+            if (! sceneImage.isValid() || sceneImage.getWidth() != w || sceneImage.getHeight() != h)
+                sceneImage = juce::Image (juce::Image::ARGB, w, h, true);
+            else
+                sceneImage.clear (sceneImage.getBounds());
+            {
+                juce::Graphics sg (sceneImage);
+                sg.addTransform (juce::AffineTransform::translation (-area.getX(), -area.getY()).scaled (0.5f));
+                RenderContext src (sg, cam, glowImage, &glowSprites);
+                src.bloom = rc.bloom; src.detail = rc.detail * 0.8f; src.brightness = rc.brightness; src.lightDir = rc.lightDir;
+                src.alpha = opacity[6];
+                sceneMgr.render (src, f);
+            }
+            g.setImageResamplingQuality (juce::Graphics::mediumResamplingQuality);
+            g.drawImage (sceneImage, area);
+            g.setImageResamplingQuality (params.getb (P::RenderAA) ? juce::Graphics::mediumResamplingQuality : juce::Graphics::lowResamplingQuality);
+        }
+    }
     if (params.geti (P::SpecPlacement) == 0) layer (4, spectrum);
     layer (5, orbit);
     layer (1, constellation);

@@ -90,7 +90,7 @@ void VisualizationCanvas::paint (juce::Graphics& g)
         return;
     }
     const double t0 = juce::Time::getMillisecondCounterHiRes();
-    core.visuals().render (g, area);
+    core.visuals().render (g, area, gpuActive());
     const auto& p = core.params();
 
     if (p.getb (P::DashOn)) drawDashboard (g, area, core, dash);

@@ -15,7 +15,7 @@ public:
 
     void update (double now, float dt, const ParamSet& p, const AnalysisSnapshot& a, const NoteTracker& tracker,
                  const MusicalStatistics& stats, double statsWindow, const std::vector<NoteChange>& changes);
-    void render (juce::Graphics& g, juce::Rectangle<float> area);
+    void render (juce::Graphics& g, juce::Rectangle<float> area, bool gpu = false);
     void clear();
 
     Camera& camera() { return cam; }
@@ -49,6 +49,9 @@ private:
     CameraController camCtl;
     Rng rng { 0xE1D010u };
     juce::Image glowImage;
+    std::vector<juce::Image> glowSprites;
+    juce::Image bgCache, vignetteCache, sceneImage;
+    juce::String bgKey, vignetteKey;
 
     // last frame inputs (render reads them; render and update are serialized)
     ParamSet params;
@@ -62,6 +65,7 @@ private:
     std::array<float, 7> scale {};
     double now = 0;
     float animTime = 0, activity = 0, adaptive = 1.0f, flash = 0;
+    bool gpuFrame = false;
     float particleScale = 1, trailScale = 1, detailScale = 1, motionQuality = 1;
     Stats st;
     int frames = 0;

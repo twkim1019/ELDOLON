@@ -32,7 +32,7 @@ void drawDashboard (juce::Graphics& g, juce::Rectangle<float> canvas, EidolonCor
         juce::StringArray names;
         core.tracker().forEachActive ([&] (int, int n, const NoteSlot&) { if (names.size() < 8) names.add (juce::String (ChordDetector::pitchName (n % 12, false)) + juce::String (n / 12 - 1)); });
         st.notes = names.joinIntoString (" ");
-        st.tempo = a.rhythm.source == BeatSource::None ? juce::String ("-") : juce::String (a.rhythm.bpm, 0) + " BPM";
+        st.tempo = a.rhythm.source == BeatSource::None ? juce::String ("-") : juce::String ((int) std::lround (a.rhythm.bpm)) + " BPM";
     }
 
     const float sc = p.get (P::DashSize);
@@ -117,7 +117,7 @@ void drawDashboard (juce::Graphics& g, juce::Rectangle<float> canvas, EidolonCor
                 caps ("NOTES");
                 g.setColour (colours::text);
                 g.setFont (Fonts::get().regular (11.5f * sc));
-                g.drawText (juce::String ((int) std::lround (st.polyphony)) + " sounding  peak " + juce::String (a.peakPolyphony) + "   vel " + juce::String (st.velocity, 0),
+                g.drawText (juce::String ((int) std::lround (st.polyphony)) + " sounding  peak " + juce::String (a.peakPolyphony) + "   vel " + juce::String ((int) std::lround (st.velocity)),
                             r.removeFromTop (15.0f * sc), juce::Justification::centredLeft, true);
                 g.setColour (colours::text2);
                 g.setFont (Fonts::get().mono (10.5f * sc));

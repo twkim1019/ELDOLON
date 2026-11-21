@@ -96,6 +96,7 @@ public:
 
     // ---- persistence (getStateJson may be called from any thread)
     juce::String getStateJson() const;
+    void flushStateIfDirty() { if (dirty) rebuildPersisted(); }   // message thread only
     void restoreStateJson (const juce::String& json);
     UiConfig ui;
 

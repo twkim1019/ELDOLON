@@ -4,8 +4,8 @@
 
 namespace eidolon
 {
-RenderContext::RenderContext (juce::Graphics& gr, const Camera& c, const juce::Image& gi)
-    : g (gr), cam (c), glowImage (gi), area (c.viewport())
+RenderContext::RenderContext (juce::Graphics& gr, const Camera& c, const juce::Image& gi, const std::vector<juce::Image>* sp)
+    : g (gr), cam (c), glowImage (gi), area (c.viewport()), sprites (sp)
 {
     projScratch.reserve (512);
     vertScratch.reserve (512);
@@ -28,12 +28,53 @@ juce::Image RenderContext::createGlowImage (int size)
     return img;
 }
 
+std::vector<juce::Image> RenderContext::createGlowSprites()
+{
+    std::vector<juce::Image> v;
+    for (int r = 0; r <= kMaxSprite; ++r)
+    {
+        const int size = std::max (1, r * 2);
+        juce::Image img (juce::Image::SingleChannel, size, size, true);
+        juce::Image::BitmapData bd (img, juce::Image::BitmapData::writeOnly);
+        const float c = (float) size * 0.5f;
+        for (int y = 0; y < size; ++y)
+            for (int x = 0; x < size; ++x)
+            {
+                const float d = std::sqrt (((float) x + 0.5f - c) * ((float) x + 0.5f - c) + ((float) y + 0.5f - c) * ((float) y + 0.5f - c)) / std::max (0.5f, c);
+                float val = d >= 1.0f ? 0.0f : std::exp (-d * d * 4.2f) * (1.0f - d * d);
+                val = val * 0.85f + (d < 0.18f ? (0.18f - d) / 0.18f * 0.15f : 0.0f);
+                *bd.getPixelPointer (x, y) = (juce::uint8) juce::jlimit (0, 255, (int) (val * 255.0f));
+            }
+        v.push_back (img);
+    }
+    return v;
+}
+
 void RenderContext::glow (float x, float y, float radius, juce::Colour c, float a)
 {
     a *= alpha;
     if (a <= 0.004f || radius < 0.5f) return;
     if (x + radius < area.getX() || x - radius > area.getRight() || y + radius < area.getY() || y - radius > area.getBottom()) return;
-    g.setColour (c.withMultipliedAlpha (juce::jlimit (0.0f, 1.0f, a)));
+    a = juce::jlimit (0.0f, 1.0f, a);
+    radius = std::min (radius, std::max (area.getWidth(), area.getHeight()) * 0.75f);
+    if (radius > (float) kMaxSprite)
+    {
+        // large halos: a radial gradient is far cheaper than resampling the sprite (matters on the CPU path)
+        juce::ColourGradient grad (c.withMultipliedAlpha (a), x, y, c.withAlpha (0.0f), x + radius, y, true);
+        grad.addColour (0.18, c.withMultipliedAlpha (a * 0.62f));
+        grad.addColour (0.42, c.withMultipliedAlpha (a * 0.24f));
+        grad.addColour (0.7, c.withMultipliedAlpha (a * 0.06f));
+        g.setGradientFill (grad);
+        g.fillEllipse (x - radius, y - radius, radius * 2.0f, radius * 2.0f);
+        return;
+    }
+    g.setColour (c.withMultipliedAlpha (a));
+    if (sprites != nullptr && (int) sprites->size() > kMaxSprite)
+    {
+        const int r = juce::jlimit (1, kMaxSprite, (int) std::lround (radius));
+        g.drawImageAt ((*sprites)[(size_t) r], (int) std::lround (x) - r, (int) std::lround (y) - r, true);
+        return;
+    }
     const float s = radius * 2.0f / (float) glowImage.getWidth();
     g.drawImageTransformed (glowImage, juce::AffineTransform::scale (s).translated (x - radius, y - radius), true);
 }

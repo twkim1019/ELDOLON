@@ -20,7 +20,7 @@ struct MeshStyle
 class RenderContext
 {
 public:
-    RenderContext (juce::Graphics& g, const Camera& cam, const juce::Image& glowImage);
+    RenderContext (juce::Graphics& g, const Camera& cam, const juce::Image& glowImage, const std::vector<juce::Image>* sprites = nullptr);
 
     juce::Graphics& g;
     const Camera& cam;
@@ -49,6 +49,10 @@ public:
     bool clipNear (Vec3& a, Vec3& b) const;
 
     static juce::Image createGlowImage (int size = 64);
+    /** Pre-rendered glow sprites for radii 0..kMaxSprite px (index = radius): blitted without resampling. */
+    static std::vector<juce::Image> createGlowSprites();
+    static constexpr int kMaxSprite = 40;
+    const std::vector<juce::Image>* sprites = nullptr;
 
 private:
     std::vector<Projected> projScratch;
