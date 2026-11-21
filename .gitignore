@@ -1,0 +1,7 @@
+build/
+build-*/
+test-output/
+dist/
+*.user
+.vs/
+.vscode/
