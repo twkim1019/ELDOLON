@@ -22,6 +22,7 @@ struct NoteChange
     double   time     = 0.0;      // audio-clock time of the transition
     double   onTime   = 0.0;      // audio-clock time of the Note On
     bool     forced   = false;    // released by stuck-note recovery / panic / all-notes-off
+    int      voice    = -1;       // assigned by the voice tracker (Start only)
 };
 
 struct NoteSlot
